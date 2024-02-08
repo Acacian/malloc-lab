@@ -93,34 +93,10 @@ int main()
 
 void levelOrderTraversal(BSTNode* root)
 {
+	
 
-    Queue q;
-	q.head = NULL; // points to queue head
-	q.tail = NULL; // points to queue tail
-
-	BSTNode *temp;
-
-	temp = root;
-	// if tree is not empty
-	if (temp != NULL) {
-		enqueue(&q.head, &q.tail, temp);
-
-		while (!isEmpty(q.head)) {
-			temp = dequeue(&q.head, &q.tail);
-			printf("%d ", temp->item);
-
-			// insert left child node in the queue
-			if (temp->left != NULL) {
-				enqueue(&q.head, &q.tail, temp->left);
-			}
-
-			// insert right child node in the queue
-			if (temp->right != NULL) {
-				enqueue(&q.head, &q.tail, temp->right);
-			}
-		}
-	}
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
