@@ -36,7 +36,7 @@ int insertSortedLL(LinkedList *ll, int item){
 					insertNode(ll, curindex, item);
 					break;
 				}
-				else{
+				else
 					if(temp -> item > item){
 						insertNode(ll, curindex, item);
 						break;
@@ -49,7 +49,7 @@ int insertSortedLL(LinkedList *ll, int item){
 						curindex = curindex + 1;
 						temp = temp -> next;
 					}
-				} 
+				 
 			}
 	}
 
