@@ -44,9 +44,35 @@ team_t team = {
 
 #define SIZE_T_SIZE (ALIGN(sizeof(size_t)))
 
-/* 
- * mm_init - initialize the malloc package.
- */
+/* 기본 상수 및 매크로 */
+#define WSIZE 4 // 워드와 헤더 및 풋터 크기 정의
+#define DSIZE 8 // 더블 워드 크기 정의
+#define CHUNKSIZE (1<<12) // 초기 가용 블록과 확장시 추가되는 블록 크기 정의
+
+#define MAX(x, y) ((x) > (y)? (x) : (y)) // 최대값 구하는 함수 정의
+
+/* 헤더 및 풋터의 값(크기와 할당 여부) 반환 */
+#define PACK(size, alloc) ((size) | (alloc)) // 크기와 할당 비트를 통합해서 헤더와 풋터에 저장할 수 있는 값 반환
+
+/* 주소 p에서 워드를 읽거나 쓰는 함수 */
+#define GET(p) (*(unsigned int *)(p)) // 포인터 p가 가리키는 블록의 데이터 반환
+#define PUT(p, val) (*(unsigned int *)(p) = (val)) // 포인터 p가 가리키는 블록의 값 저장
+
+/* 헤더 또는 풋터에서 블록의 크기와 할당된 구역을 읽어옴 */
+// & ~0x7 => 0x7:0000 0111 ~0x7:1111 1000이므로 ex. 1011 0111 & 1111 1000 = 1011 0000 : size 176bytes
+#define GET_SIZE(p) (GET(p) & ~0x7) // 포인터 p가 가리키는 헤더 또는 풋터의 크기 반환
+// & 0x1 => ex. 1011 0111 | 0000 0001 = 1 : Allocated
+#define GET_ALLOC(p) (GET(p) & 0x1) // 포인터 p가 가리키는 헤더 또는 풋터의 할당 비트 반환
+
+/* 각각 블록 헤더와 풋터가 가리키는 포인터 반환 */
+// bp : 현재 블록 포인터
+#define HDRP(bp) ((char *)(bp) - WSIZE) // 현재 블록 헤더의 위치 반환(bp - 1워드)
+#define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - DSIZE) // 현재 블록 풋터의 위치 반환(bp + 현재 블록 크기 - 더블 워드 크기)
+
+/* 각각 이전 블록과 다음 블록을 가리키는 포인터 반환 */
+#define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE))) // 다음 블록의 블록 포인터 반환(bp + 현재 블록 크기 - 1워드)
+#define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE))) // 이전 블록의 블록 포인터 반환(bp - 현재 블록 크기 - 2워드)
+
 int mm_init(void)
 {
     return 0;
