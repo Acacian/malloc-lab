@@ -113,7 +113,7 @@ int main()
 
 //////////////////////////////////////////////////////////////////////////////////
 
-int identical(BTNode *tree1, BTNode *tree2)
+int identical(BTNode *tree1, BTNode *tree2) 
 
 {
    if(tree1 == NULL && tree2 == NULL)
@@ -123,6 +123,8 @@ int identical(BTNode *tree1, BTNode *tree2)
         if(tree1->item == tree2->item) return 0;
         else
             return identical(tree1->left, tree2->left) * identical(tree1->right, tree2->right);
+            // 두 서브 트리가 모두 같아서 1을 반환하면 전체 트리도 동일하다고 판단, 1을 반환한다.
+            // 만약 하나라도 다르다면 전체 트리가 동일하지 않다고 가정해 0을 반환한다.
 }
 
 /////////////////////////////////////////////////////////////////////////////////

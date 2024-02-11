@@ -13,9 +13,9 @@ Purpose: Implementing the required functions for Question 7 */
 
 typedef struct _btnode
 {
-    int item;
-    struct _btnode *left;
-    struct _btnode *right;
+    int item; // 노드의 값
+    struct _btnode *left; // 왼쪽 자식 노드
+    struct _btnode *right; // 오른쪽 자식 노드
 } BTNode;   // You should not change the definition of BTNode
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +102,11 @@ int main()
 
 int smallestValue(BTNode *node)
 {
-	/* add your code here */
+    int l;
+    int r;
+    if (node == NULL) return 9999; // node가 NULL이라는 건 아예 tree가 없다는 것
+    else if (node->left == NULL && node->right == NULL) return node->item; // node가 leaf node라는 것
+    else l = smallestValue(node->left); r = smallestValue(node->right); if (l < r) return l; else return r;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
