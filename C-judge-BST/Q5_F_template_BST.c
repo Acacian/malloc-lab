@@ -90,7 +90,25 @@ int main()
 
 void postOrderIterativeS2(BSTNode *root)
 {
-	 /* add your code here */
+	Stack s;
+	Stack s2;
+	BSTNode *current;
+	current = root;
+	s.top = NULL;
+	s2.top = NULL;
+	if (current == NULL)
+		return;
+	else {push(&s, current);
+		while (!isEmpty(&s))
+		{
+			current = pop(&s);
+			push(&s2, current);
+			if (current->left != NULL)
+				push(&s, current->left);
+			if (current->right != NULL)
+				push(&s, current->right);
+		}
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
