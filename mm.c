@@ -73,6 +73,11 @@ team_t team = {
 #define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE))) // 다음 블록의 블록 포인터 반환(bp + 현재 블록 크기 - 1워드)
 #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE))) // 이전 블록의 블록 포인터 반환(bp - 현재 블록 크기 - 2워드)
 
+// 전역 힙 변수 및 함수 선언
+// 추가해야됨
+
+
+
 int mm_init(void)
 {
     return 0;
