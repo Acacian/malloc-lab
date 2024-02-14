@@ -86,31 +86,19 @@ int main()
 
 void moveEvenItemsToBack(LinkedList *ll)
 {
-	ListNode *temp;
-	temp = ll->head;
-	int evencount = 0;
-	int evenitem;
-	int evenindex = 0;
-	while (temp != NULL)
-	{
-		if (temp->item % 2 == 0)
-		{
-			evencount++;}
-		temp = temp->next;
-}
-temp = ll->head;
-for (int i = 0; i < evencount; i++)
-{
-	if (temp->item % 2 == 0)
-	{
-		evenitem = temp->item;
-		removeNode(ll, evenindex);
-		insertNode(ll, ll->size, evenitem);
-		temp = ll->head;
-		evenindex = 0;
-	}
-	temp = temp->next;
-}
+	//if input is 2,7,18,3,4,15 output should be 7,3,15,2,18,4
+	//make the code
+	// output can't be 18,3,4,15,2,18
+	// make 2 linkedlist with malloc
+
+	ListNode *cur, *pre, *temp;
+	int i = 0;
+	int size = ll->size;
+	cur = ll->head;
+	pre = NULL;
+	
+
+
 }
 
 

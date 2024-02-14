@@ -109,7 +109,7 @@ void alternateMergeLinkedList(LinkedList *ll1, LinkedList *ll2)
 	int inspos = 1;
 	if (fixsize >= fixsize2)
 	{
-		while (ll2->size != 0)
+		while (ll2->size > 0)
 		{
 			temp = findNode(ll2, 0);
 			insertNode(ll1, inspos, temp->item);
