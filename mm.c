@@ -112,14 +112,20 @@ static void *extend_heap(size_t words) // 새 가용 블록 생성 및 기존 �
  */
 void *mm_malloc(size_t size)
 {
-    int newsize = ALIGN(size + SIZE_T_SIZE);
-    void *p = mem_sbrk(newsize);
-    if (p == (void *)-1)
-	return NULL;
-    else {
-        *(size_t *)p = size;
-        return (void *)((char *)p + SIZE_T_SIZE);
+    size_t asize; // 조정된 블록 크기
+    size_t extendsize; // 가용 블록 확장 크기
+    char *bp;
+    if (size == 0) return NULL; // 요청 크기가 0이면 NULL 반환
+    if (size <= DSIZE) asize = 2*DSIZE; // 요청 크기가 8바이트 이하면 16바이트로 조정
+    else asize = DSIZE * ((size + (DSIZE) + (DSIZE-1)) / DSIZE); // 요청 크기가 8바이트 초과면 8의 배수로 조정
+    if ((bp = find_fit(asize)) != NULL) { // 가용 블록을 찾으면 할당
+    place(bp, asize);
+    return bp;
     }
+    extendsize = MAX(asize, CHUNKSIZE); // 가용 블록을 찾지 못하면 힙을 확장
+    if ((bp = extend_heap(extendsize/WSIZE)) == NULL) return NULL;
+    place(bp, asize);
+    return bp;
 }
 
 /*
@@ -127,7 +133,42 @@ void *mm_malloc(size_t size)
  */
 void mm_free(void *ptr)
 {
+    size_t size = GET_SIZE(HDRP(bp));
+    PUT(HDRP(bp), PACK(size, 0));
+    PUT(FTRP(bp), PACK(size, 0));
+    coalesce(bp);
 }
+
+static void *coalesce(void *bp)
+{
+    size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp)));
+    size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp)));
+    size_t size = GET_SIZE(HDRP(bp));
+
+    if (prev_alloc && next_alloc) return bp; // 이전 블록과 다음 블록이 모두 할당되어 있으면 그대로 반환 case 1
+
+    else if (prev_alloc && !next_alloc) { // 이전 블록은 할당되어 있고 다음 블록은 가용되어 있으면 다음 블록과 통합 case 2
+    size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
+    PUT(HDRP(bp), PACK(size, 0));
+    PUT(FTRP(bp), PACK(size, 0));
+    }
+
+    else if (!prev_alloc && next_alloc) { // 이전 블록은 가용되어 있고 다음 블록은 할당되어 있으면 이전 블록과 통합 case 3
+    size += GET_SIZE(HDRP(PREV_BLKP(bp)));
+    PUT(FTRP(bp), PACK(size, 0));
+    PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
+    bp = PREV_BLKP(bp);
+    }
+
+    else {
+    size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(FTRP(NEXT_BLKP(bp))); // 이전 블록과 다음 블록 모두 가용되어 있으면 이전 블록과 다음 블록과 통합 case 4
+    PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
+    PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0));
+    bp = PREV_BLKP(bp);
+    }
+    return bp;
+}
+
 
 /*
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
