@@ -80,7 +80,30 @@ team_t team = {
 
 int mm_init(void)
 {
+    if ((heap_listp = mem_sbrk(4*WSIZE)) == (void *)-1) return -1; // 초기 가용 블록 생성
+    PUT(heap_listp, 0); // 정렬을 위한 패딩
+    PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); // 프롤로그 헤더
+    PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1)); // 프롤로그 풋터
+    PUT(heap_listp + (3*WSIZE), PACK(0, 1)); // 에필로그 헤더
+    heap_listp += (2*WSIZE);
+
+    if (extend_heap(CHUNKSIZE/WSIZE) == NULL) return -1;
     return 0;
+}
+
+static void *extend_heap(size_t words) // 새 가용 블록 생성 및 기존 가용 블록과 합침
+{
+    char *bp; //char 쓰는 이유 : 1바이트면 주소 읽기 충분
+    size_t size;
+
+    size = (words % 2) ? (words+1) * WSIZE : words * WSIZE; //정렬 유지를 위해 짝수 개의 워드를 할당
+    if ((long)(bp = mem_sbrk(size)) == -1) return NULL; // 홀수면 워드 하나 더 할당
+
+    PUT(HDRP(bp), PACK(size, 0)); // 새로운 블록 헤더
+    PUT(FTRP(bp), PACK(size, 0)); // 새로운 블록 풋터
+    PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1)); // 새로운 에필로그 헤더
+
+    return coalesce(bp); // 통합된 블록 반환
 }
 
 /* 
