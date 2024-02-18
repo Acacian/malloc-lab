@@ -40,15 +40,15 @@
 
 team_t team = {
   /* Team name */
-  "pyotato",
+  "No&Yes Hyun-Woo",
   /* First member's full name */
-  "Hyemin PYo",
+  "Doha",
   /* First member's email address */
-  "pyolovely01@gmail.com",
+  "koo9811@gmail.com",
   /* Second member's full name (leave blank if none) */
-  "",
+  "No-Hyun-Woo",
   /* Second member's email address (leave blank if none) */
-  ""
+  "Yes-Hyun-Woo"
 };
 
 /* ========================== Function Prototype =============================== */
