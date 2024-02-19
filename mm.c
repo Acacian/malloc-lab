@@ -57,7 +57,7 @@ inline static void* resize_block(void*, size_t);
 inline static void* reallocate_block(void*, size_t);
 inline static int can_expand(void*, size_t);
 inline static void* expand_block(void*, size_t);
-inline static void chop_block(void*, size_t);
+inline static void seperate_block(void*, size_t);
 inline static void* extend_heap(size_t);
 inline static void* first_fit(void*, size_t);
 inline static void* best_fit(void*, size_t);
@@ -103,6 +103,7 @@ inline static int seg_index(size_t);
 /* Write a word value to address ptr */
 #define WRITE_WORD(ptr, value) (*(WTYPE *)(ptr) = (value))
 /* rounds up size (in bytes) to the nearest multiple of ALIGNMENT */
+// size를 ALIGNMENT의 배수로 올림합니다.
 #define ALIGN(size) (((size) + (ALIGNMENT-1)) & ~0x7)
 /* Get the maximum of x and y */
 #define MAX(x, y) (((x) > (y))? (x) : (y))
@@ -112,6 +113,7 @@ inline static int seg_index(size_t);
 /* ----------------------- Header/Footer Macros ---------------------------- */
 
 /* Pack the size and allocated-bit into a word */
+// size와 alloc을 합쳐서 하나의 word로 만듭니다.
 #define PACK(size, alloc) ((size) | (alloc))
 /* Read the size from header/footer word at address Hptr */
 #define READ_SIZE(Hptr) (READ_WORD(Hptr) & ~0x7)
@@ -122,6 +124,7 @@ inline static int seg_index(size_t);
 /* Write the size to the word at address Hptr */
 #define WRITE_SIZE(Hptr, size) (WRITE((Hptr), (size), READ_ALLOC(Hptr)))
 /* Write allocation-bit to the word at address Hptr */
+// Hptr의 alloc을 쓰는 것
 #define WRITE_ALLOC(Hptr, alloc) (WRITE((Hptr), READ_SIZE(Hptr), (alloc)))
 
 /* ---------------------------- Payload Macros ------------------------------ */
@@ -129,6 +132,7 @@ inline static int seg_index(size_t);
 /* Get the header-word pointer from the payload pointer pp */
 #define HEADER(pp) (MOVE_WORD(pp, -1))
 /* Get the footer-word pointer from the payload pointer pp */
+// 푸터 : 헤더와 마찬가지로 블록의 크기와 할당 여부를 저장하게 됨. header가 있지만 header의 역할을 보조함.(메모리 관리의 안전성과 일관성을 높여 줌)
 #define FOOTER(pp) (MOVE_BYTE(pp, PAYLOAD_SIZE(pp)))
 /* Get next block payload pointer from pp (current payload pointer) */
 #define NEXT_BLOCK(pp) (MOVE_BYTE(pp, BLOCK_SIZE(pp)))
@@ -137,11 +141,13 @@ inline static int seg_index(size_t);
 /* Read the block size at the payload pp */
 #define BLOCK_SIZE(pp) (READ_SIZE(HEADER(pp)))
 /* Read the payload size at pp */
+// 페이로드 : 헤더와 푸터를 제외한 블록의 크기이며, 실제 데이터를 저장하게 됨.
 #define PAYLOAD_SIZE(pp) (BLOCK_SIZE(pp) - DSIZE)
 /* Check if the block at the payload pp is free */
 #define IS_FREE(pp) (!(READ_ALLOC(HEADER(pp))))
 
 /* Sets the size and allocation-bit to header/footer of block at pp */
+// HEADER와 FOOTER에 size와 alloc을 설정합니다.
 #define SET_INFO(pp, size, alloc)\
   ((WRITE(HEADER(pp),(size),(alloc))), \
    (WRITE(FOOTER(pp),(size),(alloc))))
@@ -157,9 +163,9 @@ inline static int seg_index(size_t);
    (WRITE_ALLOC(FOOTER(pp),(alloc))))
 
 /* Get the predecessor payload address */
-#define GET_PRED(pp) ((WTYPE *)(READ_WORD(pp)))
+#define PREV_BLOCK_LIST(pp) ((WTYPE *)(READ_WORD(pp)))
 /* Get the successor payload address */
-#define GET_SUCC(pp) ((WTYPE *)(READ_WORD(MOVE_WORD(pp, 1))))
+#define NEXT_BLOCK_LIST(pp) ((WTYPE *)(READ_WORD(MOVE_WORD(pp, 1))))
 /* Set the predecessor payload address to pred_pp */
 #define SET_PRED(pp, pred_pp) (WRITE_WORD(pp, ((WTYPE) pred_pp)))
 /* Set the successor payload address to succ_pp */
@@ -176,6 +182,9 @@ static WTYPE** seglist;       /* array of free-list pointers */
  * Initialize the malloc package.
  * return 0 on success, -1 on error.
  */
+
+// 초기 힙을 설정하고, 세그먼트 리스트를 초기화해 malloc을 초기화합니다.
+// 초기 힙에는 세그먼트 리스트 배열, 헤드/테일 블록이 있습니다.
 int mm_init(void) {
   /* Create the initial empty heap */
   void* heap = mem_sbrk((SEGLIST_NUM + 2) * WSIZE); /* seglist + head + tail */
@@ -201,6 +210,9 @@ int mm_init(void) {
  *  Allocate an aligned block of memory of at least size bytes
  *  Return address of allocated block on success, NULL on error.
  */
+// 주어진 크기의 메모리 블록을 할당합니다. 세그먼트 리스트를 통해 해당 크기의 가용 블록을 찾습니다.
+// 찾는 데 실패하면 힙을 확장해 새로운 블록을 할당합니다. 그 후, 할당된 블록을 사용 가능한 크기로 분할/반환합니다.
+
 void* mm_malloc(size_t size) {
   if (size == 0) return NULL;
   void* pp;                             /* Payload Pointer */
@@ -214,7 +226,7 @@ void* mm_malloc(size_t size) {
       pp = extend_heap(size);
     }else{
       pp = extend_heap(4 * CHUNKSIZE);
-      chop_block(pp, size);
+      seperate_block(pp, size);
     }
     if (pp == NULL) return NULL;
   }
@@ -227,6 +239,8 @@ void* mm_malloc(size_t size) {
 /*
  * Free the allocated block at ptr, and coalesce it.
  */
+// 할당된 메모리 블록을 해제하고, 필요한 경우 주변 블록들과 통합해 더 큰 블록이 됩니다.
+
 void mm_free(void* ptr) {
   SET_ALLOC(ptr, 0);
   link_block(ptr);
@@ -241,6 +255,9 @@ void mm_free(void* ptr) {
  * 
  * Return address of the reallocated block, NULL on error.
  */
+
+// 메모리 블록의 크기를 조절하거나, 새로운 메모리 블록을 할당해 데이터를 복사합니다.
+// 만약 새로운 크기가 현재 크기보다 작으면 블록을 분할하고, 크면 메모리를 복사합니다.
 void* mm_realloc(void* ptr, size_t size) {
   if (ptr == NULL){
     return mm_malloc(size);
@@ -260,6 +277,10 @@ void* mm_realloc(void* ptr, size_t size) {
  * Resize the allocated block at pp to have size bytes
  * Return address of the resized block, NULL on error.
  */
+
+// 할당된 메모리 블록의 크기를 조절합니다.
+// 요청된 크기가 현재 크기보다 크면 블록을 확장하거나, 다른 곳으로 복사합니다.
+// 요청된 크기가 현재 크기보다 작으면 블록을 분할합니다.
 static void* resize_block(void* pp, size_t size) {
   size_t asize = MAX(MIN_BLOCK_SIZE, ALIGN(size + DSIZE));
   size_t bsize = BLOCK_SIZE(pp);
@@ -285,6 +306,7 @@ static void* resize_block(void* pp, size_t size) {
  * Allocate block of the given size, copy content, free old block
  * Return address of the new block, NULL on error.
  */
+// 주어진 크기의 메모리 블록을 할당하고, 새로운 크기로 다시 할당합니다.
 static void* reallocate_block(void* ptr, size_t size) {
   void *newptr = mm_malloc(size);
   if (newptr == NULL) return NULL;
@@ -297,6 +319,7 @@ static void* reallocate_block(void* ptr, size_t size) {
 /**
  * checks if the allocated-block at pp can expand to have the given size
  */
+// 주변의 가용 block을 검사해서 할당된 블록이 주어진 크기로 확장될 수 있는지 확인합니다.
 static int can_expand(void* pp, size_t size){
   size_t bsize = BLOCK_SIZE(pp);
 
@@ -318,6 +341,8 @@ static int can_expand(void* pp, size_t size){
  * expands the allocated-block at pp until it has the given size
  * return address to the new expanded block
 */
+
+// 주어진 크기로 할당된 블록을 확장합니다.
 static void* expand_block(void *pp, size_t size) {
   void* cpp = pp;
   size_t bsize = BLOCK_SIZE(pp);
@@ -345,10 +370,11 @@ static void* expand_block(void *pp, size_t size) {
   return cpp;
 }
 
-/**
- * chop the given free-block into a small free-blocks of the given size.
+/*
+ * seperate block : the given free-block into a small free-blocks of the given size.
 */
-static void chop_block(void* pp, size_t size){
+// 주어진 가용 블록을 주어진 크기로 나눕니다.
+static void seperate_block(void* pp, size_t size){
   if ((pp == NULL) || (size < MIN_BLOCK_SIZE)) return;
   size_t bsize = BLOCK_SIZE(pp);
   if ((size + MIN_BLOCK_SIZE) > bsize) return;
@@ -385,7 +411,7 @@ void* extend_heap(size_t size) {
  * Return address of the first-fit, NULL if no-fit.
 */
 static void* first_fit(void* free_list, size_t size) {
-  for (void* pp = free_list; pp != NULL ; pp = GET_SUCC(pp)) {
+  for (void* pp = free_list; pp != NULL ; pp = NEXT_BLOCK_LIST(pp)) {
     if (size <= BLOCK_SIZE(pp)) return pp;
   }
   return NULL;
@@ -399,7 +425,7 @@ static void* best_fit(void* free_list, size_t size) {
   void* best = NULL;
   size_t best_size = __SIZE_MAX__;
 
-  for (pp = free_list; pp != NULL ; pp = GET_SUCC(pp)) {
+  for (pp = free_list; pp != NULL ; pp = NEXT_BLOCK_LIST(pp)) {
     size_t curr_size = BLOCK_SIZE(pp);
     if ((size <= curr_size) && (curr_size < best_size)){
       best = pp;
@@ -496,8 +522,8 @@ static void link_block(void* pp){
 */
 static void unlink_block(void* pp) {
   int index = seg_index(BLOCK_SIZE(pp));
-  WTYPE* pred_pp = GET_PRED(pp);
-  WTYPE* succ_pp = GET_SUCC(pp);
+  WTYPE* pred_pp = PREV_BLOCK_LIST(pp);
+  WTYPE* succ_pp = NEXT_BLOCK_LIST(pp);
   if (pred_pp) SET_SUCC(pred_pp, succ_pp);
   if (succ_pp) SET_PRED(succ_pp, pred_pp);
   if (pp == seglist[index]) seglist[index] = succ_pp;
@@ -627,7 +653,7 @@ static int check_free_list(int line, int li){
   void* pred_pp = NULL;
   int count = 0;
 
-  for(void* pp = seglist[li]; pp != NULL; pp = GET_SUCC(pp)){
+  for(void* pp = seglist[li]; pp != NULL; pp = NEXT_BLOCK_LIST(pp)){
     // check if block is free
     if (!IS_FREE(pp)){
       printf("Error at %d: Seglist[%d] contains an allocated-block %p.\n",
@@ -639,7 +665,7 @@ static int check_free_list(int line, int li){
         line, li, pp);
     }
     // check the predecessor pointer
-    if (pred_pp != GET_PRED(pp)){
+    if (pred_pp != PREV_BLOCK_LIST(pp)){
       printf("Error at %d: in Seglist[%d], inconsistant predecessor link at %p.\n",
         line, li, pp );
     }
