@@ -103,29 +103,24 @@ int main()
 
 void alternateMergeLinkedList(LinkedList *ll1, LinkedList *ll2)
 {
-    ListNode *temp;
-	int fixsize = ll1->size;
-	int fixsize2 = ll2->size;
-	int inspos = 1;
-	if (fixsize >= fixsize2)
-	{
-		while (ll2->size > 0)
-		{
-			temp = findNode(ll2, 0);
-			insertNode(ll1, inspos, temp->item);
-			removeNode(ll2, 0);
-			inspos += 2;
+	ListNode * temp;
+	int fixsize1 = ll1 -> size;
+	int fixsize2 = ll2 -> size;
+	int arr = 1;
+	if (fixsize1 >= fixsize2){
+		while (ll2 -> size > 0){
+			temp = findNode(ll2,0);
+			insertNode(ll1, arr, temp -> item);
+			removeNode(ll2,0);
+			arr = arr + 2;
 		}
-	}
-	else
-	{
-		while (ll1->head != NULL)
-		{
-			temp = findNode(ll1, 0);
-			insertNode(ll2, inspos, temp->item);
-			removeNode(ll2, 0);
-			inspos += 2;
-			fixsize = fixsize - 1;
+	}else{
+		while (fixsize1 > 0){
+			temp = findNode(ll2,0);
+			insertNode(ll1, arr, temp -> item);
+			removeNode(ll2,0);
+			arr = arr + 2;
+			fixsize1 = fixsize1 - 1;
 		}
 	}
 }

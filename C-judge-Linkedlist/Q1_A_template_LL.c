@@ -33,32 +33,31 @@ int removeNode(LinkedList *ll, int index);
 //You should not change the prototype of this function
 int insertSortedLL(LinkedList *ll, int item){
 	ListNode * temp;
-	int curindex = 0;
-	if(ll == NULL) return -1;
-	else{
-		temp = ll->head;
-			while(curindex <= ll -> size){
-				if(curindex == ll -> size){
-					insertNode(ll, curindex, item);
-					break;
-				}
-				else
-					if(temp -> item > item){
-						insertNode(ll, curindex, item);
-						break;
-					}
-					else if (temp -> item == item){
-						curindex = curindex - 1;
-						break;
-					}
-					else{
-						curindex = curindex + 1;
-						temp = temp -> next;
-					}
-				 
+	int curindex = 0;	
+	if (ll == NULL) return -1;
+	else {temp = ll -> head;
+		while (curindex <= ll -> size){
+			if (curindex = ll -> size){
+				insertNode(ll,curindex,item);
+				break;
+		}
+		else {
+			if (temp -> item > item){
+				insertNode (ll, curindex,item);
+				break;
 			}
+			else if(temp -> item == item){
+				curindex = -1;
+				break;
+			}
+			else{
+				curindex = curindex + 1;
+				temp = temp -> next;
+			}
+		}
 	}
-
+	}
+	return curindex;
 }
 
 
